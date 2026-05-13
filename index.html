@@ -1,497 +1,296 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard de Obras · CGSCA</title>
-<link href="https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css" rel="stylesheet">
-<script src="https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.js"></script>
-<style>
-  :root {
-    --bg: #191919; --bg-2: #202020; --bg-3: #2f2f2f;
-    --border: rgba(255,255,255,.094);
-    --text: rgba(255,255,255,.81);
-    --text-2: rgba(255,255,255,.46);
-    --text-3: rgba(255,255,255,.282);
-    --accent: #2383e2;
-    --green-bg: rgb(36,61,48); --green-fg: rgb(77,171,154);
-    --yellow-bg: rgb(92,59,35); --yellow-fg: rgb(203,145,47);
-    --red-bg: rgb(82,46,42); --red-fg: rgb(255,115,105);
-    --gray-bg: rgb(60,60,60); --gray-fg: rgb(159,164,162);
-    --blue-bg: rgb(20,58,78); --blue-fg: rgb(82,156,202);
-    --radius: 4px; --radius-lg: 6px;
-  }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; }
-  body { font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; line-height: 1.5; -webkit-font-smoothing: antialiased; font-size: 14px; }
-  .container { max-width: 1240px; margin: 0 auto; padding: 32px 24px 80px; }
-  header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 28px; }
-  h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.02em; color: rgba(255,255,255,.95); }
-  .subtitle { color: var(--text-2); font-size: 13px; margin-top: 2px; }
-  .toolbar { display: flex; gap: 6px; flex-wrap: wrap; }
-  button { background: transparent; color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 12px; font-size: 14px; font-weight: 500; cursor: pointer; transition: background .1s; display: inline-flex; align-items: center; gap: 6px; font-family: inherit; }
-  button:hover { background: var(--bg-3); }
-  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1px; margin-bottom: 24px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
-  .stat { background: var(--bg); padding: 14px 18px; }
-  .stat-label { font-size: 12px; color: var(--text-2); font-weight: 500; }
-  .stat-value { font-size: 24px; font-weight: 600; margin-top: 4px; letter-spacing: -.01em; color: rgba(255,255,255,.95); }
-  .stat.green .stat-value { color: var(--green-fg); }
-  .stat.yellow .stat-value { color: var(--yellow-fg); }
-  .stat.red .stat-value { color: var(--red-fg); }
-  .stat.gray .stat-value { color: var(--gray-fg); }
-  .stat.blue .stat-value { color: var(--blue-fg); }
-  .stat.featured { background: var(--green-bg); }
-  .stat.featured .stat-label { color: var(--green-fg); font-weight: 600; }
-  .stat.featured .stat-value { color: rgba(255,255,255,.98); font-size: 28px; }
-  .panel { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
-  .panel-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
-  .panel-title { font-size: 14px; font-weight: 600; color: rgba(255,255,255,.92); }
-  table { width: 100%; border-collapse: collapse; }
-  th, td { text-align: left; padding: 12px 18px; font-size: 13px; border-bottom: 1px solid var(--border); }
-  th { background: var(--bg-2); font-size: 11px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.05em; }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: rgba(255,255,255,.014); }
-  .obra-code { font-weight: 500; color: rgba(255,255,255,.92); }
-  .obra-meta { font-size: 11px; color: var(--text-3); margin-top: 2px; }
-  .tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 3px; font-size: 12px; font-weight: 500; white-space: nowrap; }
-  .tag.green { background: var(--green-bg); color: var(--green-fg); }
-  .tag.yellow { background: var(--yellow-bg); color: var(--yellow-fg); }
-  .tag.red { background: var(--red-bg); color: var(--red-fg); }
-  .tag.gray { background: var(--gray-bg); color: var(--gray-fg); }
-  .tag.blue { background: var(--blue-bg); color: var(--blue-fg); }
-  .progress-wrap { display: flex; align-items: center; gap: 8px; }
-  .progress-bar { flex: 1; min-width: 60px; max-width: 120px; height: 6px; background: var(--bg-3); border-radius: 3px; overflow: hidden; }
-  .progress-fill { height: 100%; transition: width .3s; }
-  .progress-fill.green { background: var(--green-fg); }
-  .progress-fill.yellow { background: var(--yellow-fg); }
-  .progress-fill.red { background: var(--red-fg); }
-  .progress-fill.gray { background: var(--gray-fg); }
-  .progress-fill.blue { background: var(--blue-fg); }
-  .progress-text { font-size: 12px; color: var(--text-2); min-width: 36px; text-align: right; }
-  select { padding: 5px 10px; font-size: 12px; background: var(--bg-2); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); font-family: inherit; cursor: pointer; }
-  .empty { padding: 40px 20px; text-align: center; color: var(--text-3); font-size: 13px; }
-  .empty-icon { font-size: 32px; margin-bottom: 8px; opacity: .6; }
-  .status-msg { padding: 10px 14px; border-radius: var(--radius-lg); margin-bottom: 16px; font-size: 13px; display: none; align-items: center; gap: 8px; }
-  .status-msg.load { background: var(--bg-2); border: 1px solid var(--border); color: var(--text-2); display: flex; }
-  .status-msg.error { background: var(--red-bg); border: 1px solid var(--red-bg); color: var(--red-fg); display: flex; }
-  .spin { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.15); border-top-color: var(--text-2); border-radius: 50%; animation: sp 0.7s linear infinite; flex-shrink: 0; }
-  @keyframes sp { to { transform: rotate(360deg); } }
-  .footer-info { margin-top: 24px; padding: 14px 16px; background: rgba(255,255,255,.014); border: 1px solid var(--border); border-radius: var(--radius-lg); font-size: 12px; color: var(--text-2); }
-  .footer-info code { background: rgba(135,131,120,.15); color: #eb5757; padding: .2em .4em; border-radius: 3px; font-size: 90%; font-family: ui-monospace, Consolas, monospace; }
-  .last-update { font-size: 11px; color: var(--text-3); text-align: right; margin-top: 12px; }
-  ::-webkit-scrollbar { width: 10px; height: 10px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.13); border-radius: 5px; border: 2px solid var(--bg); }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.2); }
-  @media (max-width: 700px) { th, td { padding: 10px 12px; font-size: 12px; } .progress-bar { max-width: 80px; } .container { padding: 20px 14px 60px; } }
-  .map-section { margin-top: 24px; }
-  .map-wrap { height: 480px; border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--border); position: relative; }
-  #map { width: 100%; height: 100%; }
-  .map-marker { width: 18px; height: 18px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.5); box-shadow: 0 0 0 2px rgba(255,255,255,0.4), 0 2px 6px rgba(0,0,0,0.5); cursor: pointer; transition: transform .15s; }
-  .map-marker:hover { transform: scale(1.2); }
-  .map-marker.green { background: #2dd4a0; }
-  .map-marker.yellow { background: #d9a85d; }
-  .map-marker.red { background: #ff7369; }
-  .map-marker.gray { background: #9b9a97; }
-  .map-marker.blue { background: #5e87c9; }
-  .mapboxgl-popup-content { background: #2f2f2f !important; color: rgba(255,255,255,.85) !important; border-radius: 6px !important; padding: 12px 14px !important; font-family: inherit !important; box-shadow: 0 4px 16px rgba(0,0,0,0.5) !important; min-width: 200px; }
-  .mapboxgl-popup-tip { border-top-color: #2f2f2f !important; border-bottom-color: #2f2f2f !important; }
-  .mapboxgl-popup-close-button { color: rgba(255,255,255,.6) !important; font-size: 18px !important; padding: 4px 8px !important; }
-  .popup-title { font-weight: 600; font-size: 13px; color: rgba(255,255,255,.95); margin-bottom: 6px; }
-  .popup-row { font-size: 12px; color: rgba(255,255,255,.65); margin: 3px 0; }
-  .popup-tag { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: 500; margin-top: 4px; }
-  .popup-tag.green { background: rgb(36,61,48); color: rgb(77,171,154); }
-  .popup-tag.yellow { background: rgb(92,59,35); color: rgb(203,145,47); }
-  .popup-tag.red { background: rgb(82,46,42); color: rgb(255,115,105); }
-  .popup-tag.gray { background: rgb(60,60,60); color: rgb(159,164,162); }
-  .popup-tag.blue { background: rgb(20,58,78); color: rgb(82,156,202); }
-  .map-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(25,25,25,0.85); color: var(--text-3); font-size: 13px; z-index: 10; }
-  .mapboxgl-ctrl-bottom-left, .mapboxgl-ctrl-bottom-right { display: none !important; }
-  .tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 0; }
-  .tab { padding: 8px 14px; background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--text-2); font-size: 13px; font-weight: 500; cursor: pointer; transition: all .15s; margin-bottom: -1px; }
-  .tab:hover { color: var(--text); background: var(--bg-2); }
-  .tab.active { color: rgba(255,255,255,.95); border-bottom-color: var(--accent); }
-  .view { display: none; }
-  .view.active { display: block; }
-  .gantt-wrap { overflow-x: auto; background: var(--bg); }
-  .gantt-table { border-collapse: collapse; min-width: 100%; font-size: 12px; }
-  .gantt-table thead th { position: sticky; top: 0; z-index: 5; background: var(--bg-2); font-weight: 600; font-size: 11px; color: var(--text-2); text-transform: uppercase; letter-spacing: .04em; text-align: center; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); padding: 8px 4px; white-space: nowrap; }
-  .gantt-table thead th.col-obra { text-align: left; padding-left: 14px; min-width: 220px; width: 220px; position: sticky; left: 0; z-index: 6; background: var(--bg-2); }
-  .gantt-table thead th.col-month { min-width: 80px; }
-  .gantt-table tbody td { border-bottom: 1px solid var(--border); border-right: 1px solid rgba(255,255,255,.04); padding: 0; vertical-align: middle; position: relative; }
-  .gantt-table tbody td.cell-obra { position: sticky; left: 0; z-index: 4; background: var(--bg); padding: 12px 14px; border-right: 1px solid var(--border); font-size: 12px; }
-  .gantt-table tbody tr:hover td { background: rgba(255,255,255,.014); }
-  .gantt-table tbody tr:hover td.cell-obra { background: var(--bg-2); }
-  .obra-name-row { font-weight: 500; color: rgba(255,255,255,.92); font-size: 12px; }
-  .obra-meta-row { font-size: 10px; color: var(--text-3); margin-top: 2px; }
-  .gantt-bar-cell { height: 36px; min-width: 80px; }
-  .gantt-bar { position: absolute; top: 50%; transform: translateY(-50%); height: 18px; border-radius: 3px; display: flex; align-items: center; padding: 0 6px; font-size: 10px; font-weight: 500; white-space: nowrap; overflow: hidden; cursor: pointer; transition: opacity .15s, transform .15s; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
-  .gantt-bar:hover { opacity: .85; transform: translateY(-50%) scale(1.01); }
-  .gantt-bar.green { background: rgb(58,127,107); color: rgba(255,255,255,.95); }
-  .gantt-bar.yellow { background: rgb(140,108,49); color: rgba(255,255,255,.95); }
-  .gantt-bar.red { background: rgb(186,93,82); color: rgba(255,255,255,.98); }
-  .gantt-bar.gray { background: rgb(96,96,96); color: rgba(255,255,255,.85); }
-  .gantt-bar.blue { background: rgb(60,118,170); color: rgba(255,255,255,.95); }
-  .gantt-bar-progress { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(255,255,255,.18); border-radius: 3px 0 0 3px; }
-  .gantt-bar-label { position: relative; z-index: 1; }
-  .gantt-today { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent); z-index: 3; pointer-events: none; }
-  .gantt-today::before { content: 'Hoy'; position: absolute; top: 4px; left: 4px; background: var(--accent); color: white; padding: 2px 5px; border-radius: 2px; font-size: 9px; font-weight: 600; white-space: nowrap; }
-  .gantt-empty { padding: 40px 20px; text-align: center; color: var(--text-3); font-size: 13px; }
-  .gantt-legend { display: flex; gap: 14px; flex-wrap: wrap; padding: 10px 18px; border-top: 1px solid var(--border); background: var(--bg-2); font-size: 11px; color: var(--text-2); }
-  .legend-item { display: flex; align-items: center; gap: 6px; }
-  .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
-  .legend-dot.green { background: rgb(58,127,107); }
-  .legend-dot.yellow { background: rgb(140,108,49); }
-  .legend-dot.red { background: rgb(186,93,82); }
-  .legend-dot.gray { background: rgb(96,96,96); }
-  .legend-dot.blue { background: rgb(60,118,170); }
-</style>
-</head>
-<body>
-<div class="container">
-  <header>
-    <div>
-      <h1>Dashboard de Obras</h1>
-      <div class="subtitle">Monitoreo de avance · CGSCA — Juegos Centroamericanos</div>
-    </div>
-    <div class="toolbar">
-      <button id="btn-refresh" title="Actualizar datos">🔄 Actualizar</button>
-    </div>
-  </header>
+const TOKEN         = 'ntn_w6713790312aYWNFX5I215Ci3utD8IJ2V0wi70GHNhU8xD';
+const NOTION_VER    = '2022-06-28';
+const DB_OBRAS      = '08c3ee38043341839d1b8521fe790071';
+const MAPBOX_TOKEN  = 'pk.eyJ1Ijoic2FudGlhZ283MDAiLCJhIjoiY21vdnVweHltMDg4NTJwcHB4azJsN2J3cSJ9.WbTM6XKMKd07_X6nLpIBsA';
+const PROXIMITY     = '-69.929611,18.483402';
+const COUNTRY_CODE  = 'do';
 
-  <div class="tabs">
-    <button class="tab active" data-view="dashboard">📊 Dashboard</button>
-    <button class="tab" data-view="gantt">📅 Cronograma</button>
-  </div>
-
-  <div id="status" class="status-msg"></div>
-
-  <div class="view active" id="view-dashboard">
-    <div class="stats" id="stats"></div>
-    <div class="panel">
-      <div class="panel-header">
-        <div class="panel-title">Obras</div>
-        <select id="filter">
-          <option value="all">Todas</option>
-          <option value="🔴">🔴 Atrasadas</option>
-          <option value="🟡">🟡 En riesgo</option>
-          <option value="🟢">🟢 En curso</option>
-          <option value="✅">✅ Completadas</option>
-          <option value="⚪">⚪ Sin iniciar</option>
-        </select>
-      </div>
-      <div class="panel-body">
-        <table id="obras-table" style="display:none;">
-          <thead>
-            <tr>
-              <th>Obra</th><th>Estado</th><th>Avance total</th>
-              <th>Cableado</th><th>Cámaras</th><th>Fechas</th>
-            </tr>
-          </thead>
-          <tbody id="obras-body"></tbody>
-        </table>
-        <div class="empty" id="obras-empty" style="display:none;">
-          <div class="empty-icon">📋</div>
-          <div>No hay obras para mostrar</div>
-        </div>
-      </div>
-    </div>
-    <div class="map-section">
-      <div class="panel">
-        <div class="panel-header">
-          <div class="panel-title">🗺️ Ubicación de obras</div>
-          <div style="font-size:11px; color:var(--text-3);">Click en cada punto para más detalles</div>
-        </div>
-        <div class="panel-body">
-          <div class="map-wrap">
-            <div id="map"></div>
-            <div class="map-empty" id="map-empty">Cargando mapa...</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="view" id="view-gantt">
-    <div class="panel">
-      <div class="panel-header">
-        <div class="panel-title">📅 Cronograma de obras</div>
-        <div style="font-size:11px; color:var(--text-3);">Línea azul = hoy · Color = estado de avance</div>
-      </div>
-      <div class="gantt-wrap" id="gantt-wrap">
-        <div class="gantt-empty">Cargando cronograma...</div>
-      </div>
-      <div class="gantt-legend">
-        <div class="legend-item"><span class="legend-dot green"></span>En curso</div>
-        <div class="legend-item"><span class="legend-dot blue"></span>Completada</div>
-        <div class="legend-item"><span class="legend-dot yellow"></span>En riesgo</div>
-        <div class="legend-item"><span class="legend-dot red"></span>Atrasada</div>
-        <div class="legend-item"><span class="legend-dot gray"></span>Sin iniciar</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="last-update" id="last-update"></div>
-
-  <div class="footer-info">
-    💡 Los datos se sincronizan automáticamente con Notion. El estado de cada obra se calcula según su <code>avance total</code> vs el <code>tiempo transcurrido</code>. El sistema revisa cada hora y envía correo cuando una obra cambia de estado.
-  </div>
-</div>
-
-<script>
-const BASE = 'https://script.google.com/macros/s/AKfycbzcr9zo5gV67kCycXYuUnLzV6GFPomfDoCSoflQN5qSV_dH5ZlFCetTtc_iikkRr_ZZ/exec';
-let obras = [];
-
-function showStatus(msg, type) {
-  const el = document.getElementById('status');
-  el.className = 'status-msg';
-  if (!msg) { el.style.display = 'none'; return; }
-  el.classList.add(type === 'error' ? 'error' : 'load');
-  el.style.display = 'flex';
-  if (type === 'load') el.innerHTML = '<div class="spin"></div><span>' + msg + '</span>';
-  else el.textContent = msg;
+function normalizeId(id) {
+  if (!id) return '';
+  id = id.replace(/-/g, '').trim();
+  if (id.length !== 32) return id;
+  return id.slice(0,8)+'-'+id.slice(8,12)+'-'+id.slice(12,16)+'-'+id.slice(16,20)+'-'+id.slice(20);
 }
 
-function tagColor(estado) {
-  if (!estado) return 'gray';
-  if (estado.indexOf('✅') !== -1) return 'blue';
-  if (estado.indexOf('🟢') !== -1) return 'green';
-  if (estado.indexOf('🟡') !== -1) return 'yellow';
-  if (estado.indexOf('🔴') !== -1) return 'red';
-  if (estado.indexOf('⚪') !== -1) return 'gray';
-  return 'gray';
+function plainText(arr) {
+  if (!arr || !arr.length) return '';
+  return arr.map(function(x){ return x.plain_text; }).join('');
 }
 
-const UMBRAL_RIESGO = 15;
-function calcularEstado(o) {
-  if (o.estadoGeneral === 'Finalizado' || (o.avanceTotal != null && o.avanceTotal >= 100)) return '✅ Completado';
-  if (!o.inicio || !o.fin) return '⚪ Sin fecha';
-  const ahora = new Date();
-  const ini = new Date(o.inicio + 'T00:00:00');
-  const fin = new Date(o.fin + 'T23:59:59');
-  if (ahora < ini) return '⚪ No iniciado';
-  const ms = 1000 * 60 * 60 * 24;
-  const duracion = (fin - ini) / ms;
-  const transcurrido = (ahora - ini) / ms;
-  if (duracion <= 0) return '⚪ No iniciado';
-  const avance = o.avanceTotal != null ? o.avanceTotal : 0;
-  const esperado = (transcurrido / duracion) * 100;
-  const diff = esperado - avance;
-  if (diff <= 0) return '🟢 En curso';
-  if (diff <= UMBRAL_RIESGO) return '🟡 En riesgo';
-  return '🔴 Atrasado';
+function notionGet(url) {
+  return JSON.parse(UrlFetchApp.fetch(url, {
+    method: 'get',
+    headers: { 'Authorization': 'Bearer ' + TOKEN, 'Notion-Version': NOTION_VER },
+    muteHttpExceptions: true
+  }).getContentText());
 }
 
-function progressColor(estadoAvance, pct) {
-  const t = tagColor(estadoAvance);
-  if (t !== 'gray') return t;
-  if (pct >= 80) return 'green';
-  if (pct >= 50) return 'yellow';
-  if (pct > 0) return 'red';
-  return 'gray';
+function notionPost(url, payload) {
+  return JSON.parse(UrlFetchApp.fetch(url, {
+    method: 'post',
+    headers: {
+      'Authorization': 'Bearer ' + TOKEN,
+      'Notion-Version': NOTION_VER,
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  }).getContentText());
 }
 
-function formatDate(iso) {
-  if (!iso) return '—';
-  const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-  const d = new Date(iso + 'T00:00:00');
-  if (isNaN(d.getTime())) return iso;
-  return d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
-}
-
-function renderStats() {
-  const counts = { 'Completado': 0, 'En curso': 0, 'En riesgo': 0, 'Atrasado': 0, 'Sin iniciar': 0 };
-  obras.forEach(o => {
-    const e = o.estadoAvance || '';
-    if (e.indexOf('Completado') !== -1) counts['Completado']++;
-    else if (e.indexOf('En curso') !== -1) counts['En curso']++;
-    else if (e.indexOf('En riesgo') !== -1) counts['En riesgo']++;
-    else if (e.indexOf('Atrasado') !== -1) counts['Atrasado']++;
-    else counts['Sin iniciar']++;
-  });
-  document.getElementById('stats').innerHTML = `
-    <div class="stat featured"><div class="stat-label">Total obras</div><div class="stat-value">${obras.length}</div></div>
-    <div class="stat blue"><div class="stat-label">✅ Completadas</div><div class="stat-value">${counts['Completado']}</div></div>
-    <div class="stat green"><div class="stat-label">🟢 En curso</div><div class="stat-value">${counts['En curso']}</div></div>
-    <div class="stat yellow"><div class="stat-label">🟡 En riesgo</div><div class="stat-value">${counts['En riesgo']}</div></div>
-    <div class="stat red"><div class="stat-label">🔴 Atrasadas</div><div class="stat-value">${counts['Atrasado']}</div></div>
-    <div class="stat gray"><div class="stat-label">⚪ Sin iniciar</div><div class="stat-value">${counts['Sin iniciar']}</div></div>
-  `;
-}
-
-function escape(s) {
-  if (s == null) return '';
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-function renderTable() {
-  const tbody = document.getElementById('obras-body');
-  const table = document.getElementById('obras-table');
-  const empty = document.getElementById('obras-empty');
-  const filter = document.getElementById('filter').value;
-  let filtered = obras;
-  if (filter !== 'all') filtered = obras.filter(o => (o.estadoAvance || '').indexOf(filter) !== -1);
-  if (filtered.length === 0) { table.style.display = 'none'; empty.style.display = 'block'; return; }
-  table.style.display = 'table'; empty.style.display = 'none';
-  const orden = { '🔴': 0, '🟡': 1, '🟢': 2, '⚪': 3, '✅': 4 };
-  filtered.sort((a, b) => {
-    const oa = Object.keys(orden).find(k => (a.estadoAvance || '').indexOf(k) !== -1);
-    const ob = Object.keys(orden).find(k => (b.estadoAvance || '').indexOf(k) !== -1);
-    return (orden[oa] ?? 5) - (orden[ob] ?? 5);
-  });
-  tbody.innerHTML = filtered.map(o => {
-    const estado = o.estadoAvance || '⚪ Sin estado';
-    const color = tagColor(estado);
-    const pct = o.avanceTotal != null ? Math.round(o.avanceTotal) : 0;
-    const pctCab = o.avanceCableado != null ? Math.round(o.avanceCableado) : 0;
-    const pctCam = o.avanceCamaras != null ? Math.round(o.avanceCamaras) : 0;
-    const progColor = progressColor(estado, pct);
-    return `<tr>
-      <td><div class="obra-code">${escape(o.codigo)}</div><div class="obra-meta">${o.estadoGeneral ? escape(o.estadoGeneral) : '—'}</div></td>
-      <td><span class="tag ${color}">${escape(estado)}</span></td>
-      <td><div class="progress-wrap"><div class="progress-bar"><div class="progress-fill ${progColor}" style="width:${pct}%"></div></div><div class="progress-text">${pct}%</div></div></td>
-      <td><div class="progress-wrap"><div class="progress-bar"><div class="progress-fill green" style="width:${pctCab}%"></div></div><div class="progress-text">${pctCab}%</div></div></td>
-      <td><div class="progress-wrap"><div class="progress-bar"><div class="progress-fill green" style="width:${pctCam}%"></div></div><div class="progress-text">${pctCam}%</div></div></td>
-      <td><div style="font-size:12px;">${formatDate(o.inicio)}</div><div class="obra-meta">→ ${formatDate(o.fin)}</div></td>
-    </tr>`;
-  }).join('');
-}
-
-async function load() {
-  showStatus('Cargando obras desde Notion...', 'load');
+function doGet(e) {
+  const params = e.parameter;
+  const action = params.action;
+  let result;
   try {
-    const r = await fetch(BASE + '?action=obras');
-    const data = await r.json();
-    if (!Array.isArray(data)) throw new Error(data.error || 'Respuesta inesperada');
-    obras = data;
-    obras.forEach(o => { if (!o.estadoAvance) o.estadoAvance = calcularEstado(o); });
-    showStatus('', null);
-    renderStats(); renderTable(); renderMap(); renderGantt(); updateLastTime();
-  } catch (e) {
-    console.error(e);
-    showStatus('Error al cargar: ' + e.message, 'error');
+    if      (action === 'obras') result = getObras();
+    else if (action === 'debug_columnas') result = debugColumnas();
+    else if (action === 'debug_ubicacion') result = debugUbicacion();
+    else if (!action || action === 'debug') result = { received: params };
+    else result = { error: 'accion no reconocida: ' + action };
+  } catch(err) {
+    result = { error: err.toString() };
   }
+  return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
 }
 
-function updateLastTime() {
-  const now = new Date();
-  document.getElementById('last-update').textContent = 'Actualizado: ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
-}
-
-const MAPBOX_TOKEN = 'pk.eyJ1Ijoic2FudGlhZ283MDAiLCJhIjoiY21vdnVweHltMDg4NTJwcHB4azJsN2J3cSJ9.WbTM6XKMKd07_X6nLpIBsA';
-mapboxgl.accessToken = MAPBOX_TOKEN;
-let map = null;
-let mapMarkers = [];
-
-function initMap() {
-  if (map) return;
-  map = new mapboxgl.Map({ container: 'map', style: 'mapbox://styles/mapbox/dark-v11', center: [-69.929611, 18.483402], zoom: 11, attributionControl: false });
-  map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
-}
-
-function renderMap() {
-  if (!map) initMap();
-  mapMarkers.forEach(m => m.remove());
-  mapMarkers = [];
-  const conCoord = obras.filter(o => o.lat != null && o.lng != null);
-  const empty = document.getElementById('map-empty');
-  if (conCoord.length === 0) { empty.style.display = 'flex'; empty.textContent = 'No hay obras con coordenadas'; return; }
-  empty.style.display = 'none';
-  const bounds = new mapboxgl.LngLatBounds();
-  conCoord.forEach(o => {
-    const color = tagColor(o.estadoAvance || '');
-    const el = document.createElement('div');
-    el.className = 'map-marker ' + color;
-    const pct = o.avanceTotal != null ? Math.round(o.avanceTotal) : 0;
-    const popupHTML = `
-      <div class="popup-title">${escape(o.codigo)}</div>
-      <div class="popup-row">Avance: <strong>${pct}%</strong></div>
-      <div class="popup-row">Cableado: ${o.avanceCableado != null ? Math.round(o.avanceCableado) : 0}% · Cámaras: ${o.avanceCamaras != null ? Math.round(o.avanceCamaras) : 0}%</div>
-      <div class="popup-row">${formatDate(o.inicio)} → ${formatDate(o.fin)}</div>
-      <span class="popup-tag ${color}">${escape(o.estadoAvance || 'Sin estado')}</span>
-    `;
-    const marker = new mapboxgl.Marker(el).setLngLat([o.lng, o.lat]).setPopup(new mapboxgl.Popup({ offset: 14, closeButton: true }).setHTML(popupHTML)).addTo(map);
-    mapMarkers.push(marker);
-    bounds.extend([o.lng, o.lat]);
+function debugColumnas() {
+  const dbInfo = notionGet('https://api.notion.com/v1/databases/' + normalizeId(DB_OBRAS));
+  const props = dbInfo.properties || {};
+  const cols = [];
+  Object.keys(props).forEach(function(name) {
+    cols.push({ nombre: name, tipo: props[name].type });
   });
-  if (conCoord.length === 1) map.flyTo({ center: [conCoord[0].lng, conCoord[0].lat], zoom: 14 });
-  else map.fitBounds(bounds, { padding: 60, maxZoom: 14 });
+  return cols;
 }
 
-document.querySelectorAll('.tab').forEach(t => {
-  t.addEventListener('click', () => {
-    const view = t.dataset.view;
-    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
-    document.querySelectorAll('.view').forEach(x => x.classList.remove('active'));
-    t.classList.add('active');
-    document.getElementById('view-' + view).classList.add('active');
-    if (view === 'dashboard' && map) setTimeout(() => map.resize(), 50);
+function debugUbicacion() {
+  const data = notionPost('https://api.notion.com/v1/databases/' + normalizeId(DB_OBRAS) + '/query', { page_size: 5 });
+  const out = [];
+  (data.results || []).forEach(function(p) {
+    Object.keys(p.properties).forEach(function(name) {
+      if (name.toLowerCase().indexOf('ubicaci') !== -1) {
+        out.push({ propiedad: name, valor_raw: p.properties[name] });
+      }
+    });
   });
-});
+  return out;
+}
 
-function renderGantt() {
-  const wrap = document.getElementById('gantt-wrap');
-  const conFechas = obras.filter(o => o.inicio && o.fin);
-  if (conFechas.length === 0) { wrap.innerHTML = '<div class="gantt-empty">No hay obras con fechas</div>'; return; }
-  let minDate = null, maxDate = null;
-  conFechas.forEach(o => {
-    const d1 = new Date(o.inicio + 'T00:00:00');
-    const d2 = new Date(o.fin + 'T00:00:00');
-    if (!minDate || d1 < minDate) minDate = d1;
-    if (!maxDate || d2 > maxDate) maxDate = d2;
-  });
-  minDate = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
-  maxDate = new Date(maxDate.getFullYear(), maxDate.getMonth() + 1, 0);
-  const hoy = new Date();
-  if (hoy < minDate) minDate = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-  if (hoy > maxDate) maxDate = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
-  const meses = [];
-  const d = new Date(minDate);
-  while (d <= maxDate) {
-    meses.push({ year: d.getFullYear(), month: d.getMonth() });
-    d.setMonth(d.getMonth() + 1);
+function geocodeLugar(nombre) {
+  if (!nombre) return null;
+  const cache = CacheService.getScriptCache();
+  const cacheKey = 'geo_' + nombre.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 200);
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    try {
+      const c = JSON.parse(cached);
+      if (c.lat != null && c.lng != null) return c;
+    } catch(e) {}
   }
-  const monthNames = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-  const dayMs = 1000 * 60 * 60 * 24;
-  const totalDays = Math.round((maxDate - minDate) / dayMs) + 1;
-  const monthWidth = 100;
-  const totalWidth = meses.length * monthWidth;
-  const dayWidth = totalWidth / totalDays;
-  const orden = { '🔴': 0, '🟡': 1, '🟢': 2, '⚪': 3, '✅': 4 };
-  conFechas.sort((a, b) => {
-    const oa = Object.keys(orden).find(k => (a.estadoAvance || '').indexOf(k) !== -1);
-    const ob = Object.keys(orden).find(k => (b.estadoAvance || '').indexOf(k) !== -1);
-    return (orden[oa] ?? 5) - (orden[ob] ?? 5);
-  });
-  let html = '<table class="gantt-table"><thead><tr><th class="col-obra">Obra</th>';
-  meses.forEach(m => { html += '<th class="col-month" style="min-width:' + monthWidth + 'px; width:' + monthWidth + 'px;">' + monthNames[m.month] + ' ' + m.year + '</th>'; });
-  html += '</tr></thead><tbody>';
-  conFechas.forEach(o => {
-    const inicio = new Date(o.inicio + 'T00:00:00');
-    const fin = new Date(o.fin + 'T00:00:00');
-    const offsetDays = Math.round((inicio - minDate) / dayMs);
-    const durDays = Math.round((fin - inicio) / dayMs) + 1;
-    const left = offsetDays * dayWidth;
-    const width = Math.max(durDays * dayWidth, 20);
-    const color = tagColor(o.estadoAvance || '');
-    const pct = o.avanceTotal != null ? Math.round(o.avanceTotal) : 0;
-    html += '<tr><td class="cell-obra"><div class="obra-name-row">' + escape(o.codigo) + '</div><div class="obra-meta-row">' + escape(o.estadoAvance || 'Sin estado') + ' · ' + pct + '%</div></td>';
-    html += '<td class="gantt-bar-cell" colspan="' + meses.length + '" style="width:' + totalWidth + 'px; min-width:' + totalWidth + 'px;">';
-    html += '<div class="gantt-bar ' + color + '" style="left:' + left + 'px; width:' + width + 'px;" title="' + escape(o.codigo) + ' — ' + formatDate(o.inicio) + ' a ' + formatDate(o.fin) + ' (' + pct + '%)">';
-    if (pct > 0) html += '<div class="gantt-bar-progress" style="width:' + pct + '%"></div>';
-    html += '<span class="gantt-bar-label">' + escape(o.codigo) + ' · ' + pct + '%</span></div></td></tr>';
-  });
-  html += '</tbody></table>';
-  if (hoy >= minDate && hoy <= maxDate) {
-    const hoyOffset = Math.round((hoy - minDate) / dayMs) * dayWidth;
-    html = html.replace('</tbody></table>', '</tbody></table><style>#gantt-wrap{position:relative;}</style><div class="gantt-today" style="left:' + (220 + hoyOffset) + 'px; top:35px;"></div>');
-  }
-  wrap.innerHTML = html;
+  try {
+    const query = encodeURIComponent(nombre);
+    const url = 'https://api.mapbox.com/geocoding/v5/mapbox.places/' + query + '.json' +
+                '?access_token=' + MAPBOX_TOKEN +
+                '&proximity=' + PROXIMITY +
+                '&country=' + COUNTRY_CODE +
+                '&limit=1';
+    const r = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    if (r.getResponseCode() !== 200) return null;
+    const data = JSON.parse(r.getContentText());
+    if (data.features && data.features.length > 0) {
+      const center = data.features[0].center;
+      const result = { lat: center[1], lng: center[0] };
+      cache.put(cacheKey, JSON.stringify(result), 60 * 60 * 24 * 30);
+      return result;
+    }
+  } catch (e) {}
+  return null;
 }
 
-document.getElementById('btn-refresh').addEventListener('click', load);
-document.getElementById('filter').addEventListener('change', renderTable);
-load();
-</script>
-</body>
-</html>
+function getObras() {
+  const dbInfo = notionGet('https://api.notion.com/v1/databases/' + normalizeId(DB_OBRAS));
+  const props = dbInfo.properties || {};
+  let titleName = null;
+  let estadoGenName = null;
+  let estadoAvSelectName = null;
+  let estadoFormulaName = null;
+  let fechaIniName = null;
+  let fechaFinName = null;
+  let avanceTotalName = null;
+  let avanceCableadoName = null;
+  let avanceCamarasName = null;
+  let latName = null;
+  let lngName = null;
+  let ubicacionName = null;
+
+  Object.keys(props).forEach(function(name) {
+    const p = props[name];
+    const lower = name.toLowerCase();
+    if (p.type === 'title') titleName = name;
+    if ((p.type === 'status' || p.type === 'select') && lower === 'estado general') estadoGenName = name;
+    if (p.type === 'select' && (lower.indexOf('estado de avance') !== -1 || lower.indexOf('estado actual') !== -1)) {
+      estadoAvSelectName = name;
+    }
+    if (p.type === 'formula' && lower.indexOf('estado actual') !== -1) estadoFormulaName = name;
+    if (p.type === 'date' && lower.indexOf('inicio') !== -1) fechaIniName = name;
+    if (p.type === 'date' && lower.indexOf('fin') !== -1) fechaFinName = name;
+    if (p.type === 'formula' && lower.indexOf('total') !== -1 && lower.indexOf('%') !== -1) avanceTotalName = name;
+    if (p.type === 'formula' && lower.indexOf('cableado') !== -1) avanceCableadoName = name;
+    // FIX cámaras: solo agarrar la fórmula que tenga "cámar" Y "%" (Avance (Cámaras) %)
+    if (p.type === 'formula' && lower.indexOf('cámar') !== -1 && lower.indexOf('%') !== -1) avanceCamarasName = name;
+    if (p.type === 'number' && (lower === 'latitud' || lower === 'lat')) latName = name;
+    if (p.type === 'number' && (lower === 'longitud' || lower === 'lng' || lower === 'lon')) lngName = name;
+    if (lower.indexOf('ubicaci') !== -1 || lower.indexOf('lugar') !== -1) ubicacionName = name;
+  });
+
+  Logger.log('Cols detectadas → title=' + titleName +
+             ' | estadoGen=' + estadoGenName +
+             ' | avanceCamaras=' + avanceCamarasName +
+             ' | ubicacion=' + ubicacionName);
+
+  const obras = [];
+  let hasMore = true;
+  let cursor = null;
+  while (hasMore) {
+    const payload = { page_size: 100 };
+    if (cursor) payload.start_cursor = cursor;
+    const data = notionPost('https://api.notion.com/v1/databases/' + normalizeId(DB_OBRAS) + '/query', payload);
+    (data.results || []).forEach(function(p) {
+      const tProp = titleName ? p.properties[titleName] : null;
+      const codigo = tProp && tProp.title ? plainText(tProp.title) : '';
+      if (!codigo) return;
+
+      let estadoGen = '';
+      if (estadoGenName && p.properties[estadoGenName]) {
+        const eg = p.properties[estadoGenName];
+        if (eg.status) estadoGen = eg.status.name || '';
+        else if (eg.select) estadoGen = eg.select.name || '';
+      }
+
+      let estadoAv = '';
+      if (estadoFormulaName && p.properties[estadoFormulaName] && p.properties[estadoFormulaName].formula) {
+        const f = p.properties[estadoFormulaName].formula;
+        if (typeof f.string === 'string') estadoAv = f.string;
+      }
+      if (!estadoAv && estadoAvSelectName && p.properties[estadoAvSelectName] && p.properties[estadoAvSelectName].select) {
+        estadoAv = p.properties[estadoAvSelectName].select.name || '';
+      }
+
+      let inicio = '';
+      if (fechaIniName && p.properties[fechaIniName] && p.properties[fechaIniName].date) {
+        inicio = p.properties[fechaIniName].date.start || '';
+      }
+      let fin = '';
+      if (fechaFinName && p.properties[fechaFinName] && p.properties[fechaFinName].date) {
+        fin = p.properties[fechaFinName].date.start || '';
+      }
+
+      function getFormulaNumber(propName) {
+        if (!propName || !p.properties[propName]) return null;
+        const f = p.properties[propName].formula;
+        if (!f) return null;
+        if (typeof f.number === 'number') return f.number;
+        return null;
+      }
+
+      const avanceTotal    = getFormulaNumber(avanceTotalName);
+      const avanceCableado = getFormulaNumber(avanceCableadoName);
+      const avanceCamaras  = getFormulaNumber(avanceCamarasName);
+
+      let lat = null, lng = null;
+      if (latName && p.properties[latName] && typeof p.properties[latName].number === 'number') {
+        lat = p.properties[latName].number;
+      }
+      if (lngName && p.properties[lngName] && typeof p.properties[lngName].number === 'number') {
+        lng = p.properties[lngName].number;
+      }
+
+      let ubicacionTexto = '';
+      if (ubicacionName && p.properties[ubicacionName]) {
+        const up = p.properties[ubicacionName];
+        if (up.url) {
+          ubicacionTexto = up.url;
+          if (lat == null || lng == null) {
+            const c = extraerCoordsDeURL(up.url);
+            if (c) { lat = c.lat; lng = c.lng; }
+          }
+        }
+        else if (up.rich_text) {
+          ubicacionTexto = plainText(up.rich_text);
+          if (lat == null || lng == null) {
+            const c = extraerCoordsDeURL(ubicacionTexto);
+            if (c) { lat = c.lat; lng = c.lng; }
+          }
+        }
+        // FIX ubicación: Notion devuelve lat/lon (no latitude/longitude)
+        else if (up.place) {
+          ubicacionTexto = up.place.name || up.place.address || '';
+          if (typeof up.place.lat === 'number') lat = up.place.lat;
+          if (typeof up.place.lon === 'number') lng = up.place.lon;
+          if (lat == null && typeof up.place.latitude === 'number') lat = up.place.latitude;
+          if (lng == null && typeof up.place.longitude === 'number') lng = up.place.longitude;
+        }
+      }
+
+      if ((lat == null || lng == null) && ubicacionTexto) {
+        const geo = geocodeLugar(ubicacionTexto + ', Santo Domingo, República Dominicana');
+        if (geo) {
+          lat = geo.lat;
+          lng = geo.lng;
+        }
+      }
+
+      obras.push({
+        id: p.id,
+        codigo: codigo,
+        estadoGeneral: estadoGen,
+        estadoAvance: estadoAv,
+        inicio: inicio,
+        fin: fin,
+        avanceTotal: avanceTotal,
+        avanceCableado: avanceCableado,
+        avanceCamaras: avanceCamaras,
+        lat: lat,
+        lng: lng,
+        ubicacionTexto: ubicacionTexto,
+        url: p.url || ''
+      });
+    });
+    hasMore = data.has_more;
+    cursor  = data.next_cursor;
+  }
+
+  return obras;
+}
+
+function extraerCoordsDeURL(urlStr) {
+  if (!urlStr) return null;
+  urlStr = String(urlStr).trim();
+
+  if (urlStr.indexOf('maps.app.goo.gl') !== -1 || urlStr.indexOf('goo.gl/maps') !== -1) {
+    try {
+      const r = UrlFetchApp.fetch(urlStr, { muteHttpExceptions: true, followRedirects: false });
+      const headers = r.getAllHeaders();
+      const finalUrl = headers['Location'] || headers['location'] || '';
+      if (finalUrl) urlStr = finalUrl;
+    } catch (e) {}
+  }
+
+  let m = urlStr.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+
+  m = urlStr.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+
+  m = urlStr.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+
+  m = urlStr.match(/[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+
+  m = urlStr.match(/^\s*(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)\s*$/);
+  if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
+
+  return null;
+}
